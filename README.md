@@ -1,147 +1,202 @@
 # MD Studio
 
-> Editor visual drag-and-drop para criação de jogos do **Sega Mega Drive** — baseado no GB Studio, adaptado para o SGDK com geração de código C via Inteligência Artificial.
+> Editor visual drag-and-drop para criação de jogos do **Sega Mega Drive** — inspirado no GB Studio, adaptado para o SGDK com geração de código C.
 
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Mega%20Drive-orange.svg)
 ![Status](https://img.shields.io/badge/status-em%20desenvolvimento-yellow.svg)
+![Stack](https://img.shields.io/badge/stack-Electron%20%2B%20React%20%2B%20Redux-61DAFB.svg)
 
 ---
 
 ## O que é o MD Studio?
 
-O MD Studio é uma ferramenta visual que permite criar jogos para o **Sega Mega Drive / Genesis** sem precisar escrever código C manualmente. Você monta tudo visualmente — cenas, atores, inimigos, colisões, eventos, objetos — e a IA gera o código C completo, pronto para compilar com o **SGDK**.
+O **MD Studio** é um editor visual para criação de jogos para o **Sega Mega Drive / Genesis**, desenvolvido pela [FuturoOn](https://futuroon.com.br). Ele permite:
 
-### Fluxo de trabalho
-
-```
-[Editor Visual] → [IA gera código C] → [Editor de código Monaco] → [SGDK compila] → [ROM .bin]
-```
-
----
+- **Montar cenas visualmente** com drag-and-drop (sprites, tiles, atores, triggers)
+- **Gerar código C automaticamente** compatível com o [SGDK](https://github.com/Stephane-D/SGDK)
+- **Editar o código gerado** com Monaco Editor (o mesmo do VS Code) integrado
+- **Compilar e testar** diretamente via emulador
+- **Criar jogos de plataforma, top-down e shoot'em up** sem escrever código manualmente
 
 ## Funcionalidades
 
-### Editor Visual (fork do GB Studio)
-- Criação de cenas com tilemap (320x224)
-- Marcação visual de colisões tile a tile
-- Adição de atores, inimigos, objetos e NPCs
-- Sistema de eventos por blocos (drag & drop)
-- Preview em tempo real da cena
-- Gerenciamento de paletas de cores (Mega Drive: 4 paletas x 16 cores)
-- Editor de sprites e animações
-
-### Geração de Código com IA
-- O projeto é serializado em JSON estruturado
-- A IA (OpenAI GPT-4o ou Ollama local) recebe o JSON e gera código C para SGDK
-- O código gerado é **comentado e educativo**
-- Suporte a Ollama para uso **100% offline e gratuito**
-
-### Editor de Código Embutido
-- Monaco Editor (mesmo motor do VS Code) integrado
-- O usuário pode visualizar, editar e ajustar o C gerado
-- Highlight de sintaxe para C
-- Integração com erros de compilação do SGDK
-
-### Compilação via SGDK
-- SGDK bundled no `buildTools/`
-- Compilação com um clique
-- Output: `out/rom.bin` para Mega Drive
-- Log de erros mapeado de volta para os eventos visuais
-
----
-
-## Comparativo: MD Studio vs GB Studio
-
-| Feature | GB Studio | MD Studio |
-|---|---|---|
-| Plataforma alvo | Game Boy | **Sega Mega Drive** |
-| Resolução | 160x144 | **320x224** |
-| Sprites simultâneos | 40 | **80** |
-| Cores por paleta | 4 | **16 (4 paletas)** |
-| Output de código | Bytecode GBVM | **C legível e editável** |
-| IA integrada | ❌ | **✅** |
-| Editor de código | ❌ | **✅ Monaco Editor** |
-| Som | 4ch chiptune | **YM2612 FM + PSG** |
-| Botões | A,B,Start,Select | **A,B,C,X,Y,Z,Start,Mode** |
-
----
+| Funcionalidade | Status |
+|---|---|
+| Editor visual de cenas (WorldEditor) | Implementado |
+| Painel de navegação de cenas | Implementado |
+| Painel de propriedades | Implementado |
+| Barra de ferramentas | Implementado |
+| Gerador de código C para SGDK | Implementado |
+| Editor de código Monaco integrado | Implementado |
+| Editor de atores/sprites | Implementado |
+| Editor de colisões | Implementado |
+| Editor de tilesets | Implementado |
+| Store Redux (estado global) | Implementado |
+| IPC Electron (menu, dialogo, FS) | Implementado |
+| Compilador SGDK via Docker/CLI | Planejado |
+| Preview em emulador | Planejado |
 
 ## Stack Tecnológica
 
-- **Electron** — app desktop (Windows, Mac, Linux)
-- **React + TypeScript** — interface do editor
-- **Redux** — estado global do projeto
-- **Monaco Editor** — editor de código C embutido
-- **SGDK** — compilador/SDK para Mega Drive
-- **OpenAI API / Ollama** — geração de código C via IA
-- **Canvas API** — preview de tilemap e colisões
-
----
+```
+Electron 28     — shell nativo multiplataforma
+React 18        — UI reativa com JSX
+Redux Toolkit   — gerenciamento de estado global
+styled-components — estilização CSS-in-JS
+Monaco Editor   — editor de código embutido
+TypeScript 5    — tipagem estática
+Webpack 5       — bundler (via Electron Forge)
+SGDK            — kit de desenvolvimento Mega Drive
+```
 
 ## Estrutura do Projeto
 
 ```
 md-studio/
 ├── src/
-│   ├── components/        # UI React (editor visual, canvas, painéis)
-│   ├── store/             # Estado Redux do projeto
-│   ├── shared/            # Tipos TypeScript compartilhados
-│   ├── app/               # Wrapper Electron
+│   ├── main/               # Processo main do Electron
+│   │   ├── main.ts         # Janela, menus, IPC handlers
+│   │   └── preload.ts      # Bridge segura renderer <-> main
+│   ├── app/
+│   │   └── App.tsx         # Roteador: NewProjectScreen | WorldEditor
+│   ├── index.tsx           # Ponto de entrada React
+│   ├── components/
+│   │   ├── world/          # Editor principal de cenas
+│   │   │   ├── WorldEditor.tsx   # Layout com sidebar + canvas
+│   │   │   └── SceneView.tsx     # Canvas visual da cena
+│   │   ├── toolbar/
+│   │   │   └── Toolbar.tsx       # Ferramentas + gerador C
+│   │   ├── navigator/
+│   │   │   └── NavigatorPanel.tsx # Lista de cenas
+│   │   ├── properties/
+│   │   │   └── PropertiesPanel.tsx # Propriedades do objeto selecionado
+│   │   ├── editors/
+│   │   │   ├── ActorEditor.tsx    # Editor de atores
+│   │   │   ├── CollisionEditor.tsx # Editor de colisões
+│   │   │   └── TilesetEditor.tsx  # Editor de tilesets
+│   │   └── start/
+│   │       └── NewProjectScreen.tsx # Tela inicial
+│   ├── store/
+│   │   ├── index.ts        # Store Redux configurado
+│   │   ├── store.ts        # Re-export para compatibilidade
+│   │   ├── projectSlice.ts # Estado do projeto atual
+│   │   └── features/
+│   │       ├── editor/
+│   │       │   └── editorSlice.ts  # Estado do editor (tool, zoom, seleção)
+│   │       └── entities/
+│   │           ├── entitiesSlice.ts # Cenas, atores, triggers, backgrounds
+│   │           └── entitiesTypes.ts # Tipos TypeScript das entidades
 │   └── lib/
-│       ├── events/        # Eventos visuais (cada bloco = 1 arquivo)
-│       ├── compiler/      # sgdkCodeBuilder — emite código C
-│       ├── ai/            # Integração com OpenAI / Ollama
-│       └── sgdk/          # Templates C, headers SGDK, main.c base
-├── buildTools/
-│   └── sgdk/              # SGDK instalado aqui
-└── appData/               # Templates de projeto Mega Drive
+│       ├── compiler/
+│       │   └── SGDKCodeBuilder.ts  # Gerador de código C para SGDK
+│       ├── events/         # Handlers de eventos do editor
+│       ├── ai/             # Integração com IA para sugestões de código
+│       └── sgdk/
+│           └── mainTemplate.c  # Template base do main.c SGDK
+├── scripts/
+│   └── fetchDeps.js        # Verificador de dependências externas
+├── public/
+│   └── index.html          # Template HTML
+├── forge.config.ts         # Configuração do Electron Forge
+├── webpack.main.config.ts  # Webpack processo main
+├── webpack.renderer.config.ts # Webpack processo renderer
+├── tsconfig.json           # Configuração TypeScript
+└── package.json
 ```
 
----
+## Instalação e Execução
 
-## Roadmap
+### Pré-requisitos
 
-### Fase 1 — Estrutura base
-- [ ] Fork e adaptação do GB Studio
-- [ ] Substituir GBDK por SGDK no buildTools
-- [ ] Ajustar constantes de hardware (resolução, paletas, limites MD)
-- [ ] Renomear UI para Mega Drive
+- Node.js >= 18.0.0
+- npm ou yarn
+- Git
 
-### Fase 2 — Gerador de código C
-- [ ] Criar `sgdkCodeBuilder.ts`
-- [ ] Adaptar 10 eventos principais (movimento, input, colisão, som, diálogo)
-- [ ] Integrar Monaco Editor para exibir o código gerado
+### Clonar e instalar
 
-### Fase 3 — Integração com IA
-- [ ] Prompt template que serializa o projeto JSON
-- [ ] Integração com OpenAI GPT-4o
-- [ ] Integração com Ollama (CodeLlama / Qwen2.5-Coder) para uso offline
-- [ ] Modo educativo: IA explica cada bloco de código gerado
+```bash
+git clone https://github.com/arkanael/md-studio.git
+cd md-studio
+npm install
+```
 
-### Fase 4 — Pipeline de build
-- [ ] Invocar SGDK via Node.js child_process
-- [ ] Output de compilação em tempo real
-- [ ] Mapeamento de erros C → eventos visuais
-- [ ] Exportar ROM `.bin` final
+### Verificar dependências opcionais (SGDK)
 
----
+```bash
+npm run fetch-deps
+```
 
-## Sobre o Projeto
+### Iniciar em modo desenvolvimento
 
-Desenvolvido pela **[FuturoOn](https://futuroon.com.br)** — ONG de tecnologia e educação de São Gonçalo, Rio de Janeiro.
+```bash
+npm start
+```
 
-O objetivo é usar o MD Studio como ferramenta educacional: alunos montam jogos visualmente, a IA gera e explica o código C, e quem quiser aprender mais pode editar diretamente no Monaco Editor.
+### Build para distribuição
 
----
+```bash
+npm run build
+```
 
-## Baseado em
+## Como Usar
 
-- [GB Studio](https://github.com/chrismaltby/gb-studio) — MIT License — Chris Maltby
-- [SGDK](https://github.com/Stephane-D/SGDK) — Stéphane Dallongeville
+1. **Criar Projeto** — Na tela inicial, escolha um template (plataforma, top-down, shooter)
+2. **Adicionar Cenas** — Clique em `+ Cena` no painel esquerdo
+3. **Editar Cenas** — Arraste sprites e tiles para a área central
+4. **Configurar Atores** — Clique em um ator para editar propriedades
+5. **Gerar Código C** — Clique em `Gerar Código C` na toolbar
+6. **Editar o Código** — Monaco Editor abrirá com o código gerado
+7. **Compilar** — Use `Compilar SGDK` para gerar a ROM (requer SGDK instalado)
 
----
+## Código C Gerado
+
+O MD Studio gera código C estruturado compatível com o SGDK:
+
+```c
+/* Gerado pelo MD Studio */
+#include <genesis.h>
+#include "resources.h"
+
+#define SCREEN_WIDTH 320
+#define SCREEN_HEIGHT 224
+
+void init_cena_01() {
+    VDP_clearPlane(BG_A, TRUE);
+    SPR_init();
+    /* ... */
+}
+
+void update_cena_01() {
+    u16 joy = JOY_readJoypad(JOY_1);
+    if (joy & BUTTON_RIGHT) playerX += 2;
+    /* ... */
+}
+
+int main() {
+    JOY_init();
+    VDP_setScreenWidth320();
+    init_cena_01();
+    while(TRUE) {
+        SYS_doVBlankProcess();
+        update_cena_01();
+        SPR_update();
+    }
+    return 0;
+}
+```
+
+## Contribuindo
+
+Veja [CONTRIBUTING.md](CONTRIBUTING.md) para guia completo de contribuição.
+
+## Sobre
+
+Projeto desenvolvido pela **FuturoOn** — ONG de tecnologia e educação baseada em São Gonçalo, RJ.
+
+- Site: [futuroon.com.br](https://futuroon.com.br)
+- GitHub: [@arkanael](https://github.com/arkanael)
 
 ## Licença
 
-MIT License — veja [LICENSE](LICENSE) para detalhes.
+[MIT](LICENSE) © FuturoOn
