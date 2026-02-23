@@ -4,18 +4,20 @@
 // para o hardware do Sega Mega Drive / SGDK
 // ============================================================
 
+import type { MDSceneType } from '../../../lib/scenes/sceneTypes';
+
 // ---------------------------
 // Constantes do Mega Drive
 // ---------------------------
-export const MD_SCREEN_WIDTH = 320;   // pixels (modo H40)
-export const MD_SCREEN_HEIGHT = 224;  // pixels (modo V28)
-export const MD_TILE_SIZE = 8;        // tiles de 8x8 px
-export const MD_TILES_X = 40;         // 320 / 8
-export const MD_TILES_Y = 28;         // 224 / 8
-export const MD_MAX_SPRITES = 80;     // limite HW do VDP
-export const MD_PALETTE_COLORS = 16;  // cores por paleta
-export const MD_NUM_PALETTES = 4;     // PAL0..PAL3
-export const MD_MAX_PLANES = 2;       // Plano A e Plano B
+export const MD_SCREEN_WIDTH = 320;
+export const MD_SCREEN_HEIGHT = 224;
+export const MD_TILE_SIZE = 8;
+export const MD_TILES_X = 40;
+export const MD_TILES_Y = 28;
+export const MD_MAX_SPRITES = 80;
+export const MD_PALETTE_COLORS = 16;
+export const MD_NUM_PALETTES = 4;
+export const MD_MAX_PLANES = 2;
 
 // ---------------------------
 // IDs
@@ -23,187 +25,217 @@ export const MD_MAX_PLANES = 2;       // Plano A e Plano B
 export type EntityId = string;
 
 // ---------------------------
-// Posição
+// Posicao
 // ---------------------------
-export interface Position {
-  x: number; // em tiles
-  y: number; // em tiles
-}
-
-export interface PixelPosition {
-  x: number; // em pixels
-  y: number; // em pixels
-}
+export interface Position { x: number; y: number; }
+export interface PixelPosition { x: number; y: number; }
 
 // ---------------------------
-// Direção do ator
+// Direcao do ator
 // ---------------------------
 export type ActorDirection = 'down' | 'up' | 'left' | 'right';
 
 // ---------------------------
-// Paleta de cores Mega Drive
-// Cada paleta tem 16 cores no formato #RRGGBB
+// Paleta
 // ---------------------------
 export interface MDPalette {
   id: EntityId;
   name: string;
-  colors: string[]; // 16 strings hex, ex: ["#000000", "#FF0000", ...]
+  colors: string[];
 }
 
 // ---------------------------
-// Tile de colisão
-// Baseado nos flags do GB Studio, adaptado para MD
+// Colisao
 // ---------------------------
 export type CollisionTileType =
-  | 'none'
-  | 'solid'
-  | 'top'
-  | 'bottom'
-  | 'left'
-  | 'right'
-  | 'ladder'
-  | 'slope_up'
-  | 'slope_down';
+  | 'none' | 'solid' | 'top' | 'bottom'
+  | 'left' | 'right' | 'ladder'
+  | 'slope_up' | 'slope_down';
 
 export interface CollisionTile {
-  x: number;
-  y: number;
-  type: CollisionTileType;
+  x: number; y: number; type: CollisionTileType;
 }
 
 // ---------------------------
-// Sprite / Ator
-// Representa um sprite do Mega Drive
+// Sprite
 // ---------------------------
 export interface MDSprite {
   id: EntityId;
   name: string;
-  filename: string;     // caminho relativo ao assets/sprites/
-  width: number;        // em pixels (multiplo de 8)
-  height: number;       // em pixels (multiplo de 8)
-  paletteId: EntityId;  // qual paleta usa
+  filename: string;
+  width: number;
+  height: number;
+  paletteId: EntityId;
   animationFrames: number;
   animations: MDAnimation[];
 }
 
 export interface MDAnimation {
   id: EntityId;
-  name: string;         // ex: "idle_down", "walk_up"
-  frames: number[];     // indices dos frames no sprite sheet
-  speed: number;        // frames por segundo
+  name: string;
+  frames: number[];
+  speed: number;
   loop: boolean;
 }
 
 // ---------------------------
-// Ator (instância de sprite na cena)
-// Equivale ao Actor do GB Studio
+// Ator
 // ---------------------------
 export interface MDActor {
   id: EntityId;
   name: string;
-  x: number;                   // posição em tiles
-  y: number;                   // posição em tiles
+  x: number;
+  y: number;
   spriteId: EntityId;
   direction: ActorDirection;
-  moveSpeed: number;           // pixels por frame
-  animSpeed: number;           // velocidade de animação
+  moveSpeed: number;
+  animSpeed: number;
   paletteId: EntityId;
-  collisionGroup: string;      // ex: 'player', 'enemy', 'npc'
-  isPersistent: boolean;       // persiste entre cenas?
-  script: MDScriptEvent[];     // script de interação
-  startScript: MDScriptEvent[];// script ao iniciar cena
-  updateScript: MDScriptEvent[];// script a cada frame (UPDATE)
-  hitScript: MDScriptEvent[];  // script ao receber dano
+  collisionGroup: string;
+  isPersistent: boolean;
+  script: MDScriptEvent[];
+  startScript: MDScriptEvent[];
+  updateScript: MDScriptEvent[];
+  hitScript: MDScriptEvent[];
 }
 
 // ---------------------------
-// Trigger (zona de gatilho)
+// Trigger
 // ---------------------------
 export interface MDTrigger {
   id: EntityId;
   name: string;
   x: number;
   y: number;
-  width: number;   // em tiles
-  height: number;  // em tiles
-  script: MDScriptEvent[];
+  width: number;
+  height: number;
+  script: MDScriptEvent[];       // OnEnter
+  leaveScript: MDScriptEvent[];  // OnLeave
 }
 
 // ---------------------------
-// Background (fundo / tilemap)
-// Equivale ao Background do GB Studio
+// Background
 // ---------------------------
 export interface MDBackground {
   id: EntityId;
   name: string;
-  filename: string;       // caminho relativo a assets/backgrounds/
-  width: number;          // em tiles
-  height: number;         // em tiles
-  paletteIds: EntityId[]; // até 4 paletas usadas
-  tileData: number[];     // dados do tilemap (indices)
-  plane: 'A' | 'B';      // Plano A (foreground) ou B (background)
+  filename: string;
+  width: number;
+  height: number;
+  paletteIds: EntityId[];
+  tileData: number[];
+  plane: 'A' | 'B';
 }
 
 // ---------------------------
+// Configs por tipo de cena
+// ---------------------------
+
+export interface MDSceneTopDownSettings {
+  gridSize: 8 | 16;
+  allowDiagonal: boolean;
+}
+
+export interface MDScenePlatformerSettings {
+  gravity: number;
+  jumpForce: number;
+  maxFallSpeed: number;
+  runEnabled: boolean;
+  doubleJumpEnabled: boolean;
+  wallJumpEnabled: boolean;
+  floatEnabled: boolean;
+  dashEnabled: boolean;
+  laddersEnabled: boolean;
+  scrollDirection: 'horizontal' | 'vertical';
+}
+
+export interface MDSceneAdventureSettings {
+  movementType: 'free' | '4way' | 'horizontal_only';
+  runEnabled: boolean;
+  dashEnabled: boolean;
+  pushEnabled: boolean;
+}
+
+export interface MDSceneShmupSettings {
+  scrollDirection: 'horizontal' | 'vertical';
+  autoScroll: boolean;
+  scrollSpeed: number;
+  lockPlayerToEdge: boolean;
+  playerBulletSpeed: number;
+}
+
+export interface MDScenePointAndClickSettings {
+  cursorSpriteId?: EntityId;
+  cursorSpeed: number;
+}
+
+export type MDSceneTypeSettings =
+  | MDSceneTopDownSettings
+  | MDScenePlatformerSettings
+  | MDSceneAdventureSettings
+  | MDSceneShmupSettings
+  | MDScenePointAndClickSettings
+  | null;
+
+// ---------------------------
 // Cena
-// Equivale ao Scene do GB Studio, adaptado para MD
 // ---------------------------
 export interface MDScene {
   id: EntityId;
   name: string;
+  type: MDSceneType;
+  typeSettings: MDSceneTypeSettings;
   backgroundId: EntityId;
-  width: number;             // em tiles
-  height: number;            // em tiles
-  paletteIds: EntityId[];    // paletas da cena
+  width: number;
+  height: number;
+  paletteIds: EntityId[];
   actors: MDActor[];
   triggers: MDTrigger[];
   collisions: CollisionTile[];
   playerStartX: number;
   playerStartY: number;
   playerStartDirection: ActorDirection;
-  script: MDScriptEvent[];   // script ao entrar na cena
+  script: MDScriptEvent[];
   playerHitScript: MDScriptEvent[];
   musicId?: EntityId;
-  // Configurações específicas do MD
-  scrollX: boolean;          // scroll horizontal?
-  scrollY: boolean;          // scroll vertical?
-  planeAId?: EntityId;       // background no Plano A
-  planeBId?: EntityId;       // background no Plano B (parallax)
+  scrollX: boolean;
+  scrollY: boolean;
+  planeAId?: EntityId;
+  planeBId?: EntityId;
 }
 
 // ---------------------------
-// Evento de script
-// Equivale ao ScriptEvent do GB Studio
+// Script Event
 // ---------------------------
 export interface MDScriptEvent {
   id: EntityId;
-  command: string;           // ex: 'EVENT_ACTOR_MOVE_TO'
+  command: string;
   args: Record<string, unknown>;
-  children?: Record<string, MDScriptEvent[]>; // blocos true/false
+  children?: Record<string, MDScriptEvent[]>;
 }
 
 // ---------------------------
-// Variável do jogo
+// Variavel
 // ---------------------------
 export interface MDVariable {
   id: EntityId;
-  name: string;              // ex: 'pontuacao', 'vidas'
-  defaultValue: number;      // valor inicial
-  isGlobal: boolean;         // global ou local da cena?
+  name: string;
+  defaultValue: number;
+  isGlobal: boolean;
 }
 
 // ---------------------------
-// Musica (arquivo XGM para SGDK)
+// Musica (XGM/VGM para SGDK)
 // ---------------------------
 export interface MDMusic {
   id: EntityId;
   name: string;
-  filename: string;          // caminho relativo a assets/music/
-  type: 'xgm' | 'vgm';      // formato suportado pelo SGDK
+  filename: string;
+  type: 'xgm' | 'vgm';
 }
 
 // ---------------------------
-// Efeito Sonoro (arquivo PCM/WAV)
+// Efeito Sonoro
 // ---------------------------
 export interface MDSoundEffect {
   id: EntityId;
@@ -213,13 +245,12 @@ export interface MDSoundEffect {
 }
 
 // ---------------------------
-// Projeto completo
-// Equivale ao ProjectData do GB Studio
+// Projeto
 // ---------------------------
 export interface MDProject {
   name: string;
-  version: string;           // versao do MD Studio
-  targetSystem: 'megadrive'; // apenas Mega Drive por enquanto
+  version: string;
+  targetSystem: 'megadrive';
   videoMode: 'NTSC' | 'PAL';
   startSceneId: EntityId;
   startX: number;
@@ -236,16 +267,15 @@ export interface MDProject {
 }
 
 // ---------------------------
-// Configurações do projeto
+// Configuracoes do projeto
 // ---------------------------
 export interface MDProjectSettings {
-  customColors: boolean;      // usar paletas customizadas?
-  windowPaletteId?: EntityId; // paleta para janelas de dialogo
-  playerSpriteId: EntityId;   // sprite do jogador
+  customColors: boolean;
+  windowPaletteId?: EntityId;
+  playerSpriteId: EntityId;
   defaultPlayerPaletteId: EntityId;
-  sgdkPath: string;           // caminho para o SGDK
-  outputPath: string;         // pasta de saida do C gerado
-  // Limites do hardware
-  maxActorsPerScene: number;  // recomendado <= 20 para performance
+  sgdkPath: string;
+  outputPath: string;
+  maxActorsPerScene: number;
   maxTriggersPerScene: number;
 }
