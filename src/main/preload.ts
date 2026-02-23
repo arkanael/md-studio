@@ -1,10 +1,10 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-// -------------------------------------------------
+// -----------------------------------------------
 // preload.ts - Ponte segura entre renderer e main
 // Expoe APIs do Node.js de forma controlada
 // usando contextBridge para seguranca
-// -------------------------------------------------
+// -----------------------------------------------
 
 export type FileResult = { success: boolean; data?: string; error?: string };
 export type WriteResult = { success: boolean; error?: string };
@@ -13,50 +13,60 @@ export type WriteResult = { success: boolean; error?: string };
 const mdStudioAPI = {
   // --- Sistema de Arquivos ---
   readFile: (filePath: string): Promise<FileResult> =>
-    ipcRenderer.invoke('fs:read-file', filePath),
+    ipcRenderer.invoke('fs:readFile', filePath),
 
   writeFile: (filePath: string, content: string): Promise<WriteResult> =>
-    ipcRenderer.invoke('fs:write-file', filePath, content),
+    ipcRenderer.invoke('fs:writeFile', filePath, content),
 
-  // --- Dialogs ---
-  openDialog: (options: Electron.OpenDialogOptions): Promise<Electron.OpenDialogReturnValue> =>
-    ipcRenderer.invoke('dialog:open', options),
+  // --- Dialogo de Arquivos (Getting Started) ---
 
-  saveDialog: (options: Electron.SaveDialogOptions): Promise<Electron.SaveDialogReturnValue> =>
-    ipcRenderer.invoke('dialog:save', options),
+  // Seleciona uma pasta para salvar o projeto
+  selectDirectory: (): Promise<string | null> =>
+    ipcRenderer.invoke('dialog:selectDirectory'),
 
-  // --- Shell ---
-  openExternal: (url: string): Promise<void> =>
-    ipcRenderer.invoke('shell:open', url),
+  // Abre um projeto existente (retorna path do .mdsproj)
+  openProject: (): Promise<{ filePath: string; name: string } | null> =>
+    ipcRenderer.invoke('dialog:openProject'),
 
-  // --- Menu Events ---
-  onMenuEvent: (channel: string, callback: (...args: unknown[]) => void) => {
-    const validChannels = [
-      'menu:new-project',
-      'menu:open-project',
-      'menu:save-project',
-      'menu:save-as',
-      'menu:generate-code',
-      'menu:export-sgdk',
-    ];
-    if (validChannels.includes(channel)) {
-      ipcRenderer.on(channel, (_event, ...args) => callback(...args));
-    }
+  // Salva projeto atual
+  saveProject: (filePath: string, data: object): Promise<WriteResult> =>
+    ipcRenderer.invoke('project:save', filePath, data),
+
+  // --- Compilador SGDK ---
+
+  // Dispara compilacao SGDK e retorna output
+  compileSGDK: (projectPath: string): Promise<{ success: boolean; output: string; error?: string }> =>
+    ipcRenderer.invoke('sgdk:compile', projectPath),
+
+  // Abre emulador com a ROM gerada
+  runEmulator: (romPath: string): Promise<WriteResult> =>
+    ipcRenderer.invoke('sgdk:runEmulator', romPath),
+
+  // --- Sistema (info do app) ---
+  getAppVersion: (): Promise<string> =>
+    ipcRenderer.invoke('app:getVersion'),
+
+  // --- Eventos do menu Electron ---
+  onMenuNewProject: (callback: () => void) => {
+    ipcRenderer.on('menu:newProject', callback);
+    return () => ipcRenderer.removeListener('menu:newProject', callback);
   },
 
-  removeMenuListener: (channel: string) => {
-    ipcRenderer.removeAllListeners(channel);
+  onMenuOpenProject: (callback: () => void) => {
+    ipcRenderer.on('menu:openProject', callback);
+    return () => ipcRenderer.removeListener('menu:openProject', callback);
   },
 
-  // --- Projeto ---
-  getAppVersion: (): string => process.env.npm_package_version || '0.1.0',
-  getPlatform: (): string => process.platform,
+  onMenuSaveProject: (callback: () => void) => {
+    ipcRenderer.on('menu:saveProject', callback);
+    return () => ipcRenderer.removeListener('menu:saveProject', callback);
+  },
 };
 
-// Expoe a API via contextBridge (seguro - sem expor ipcRenderer diretamente)
+// Expoe como window.mdStudio
 contextBridge.exposeInMainWorld('mdStudio', mdStudioAPI);
 
-// Tipos TypeScript para o renderer
+// Tipos globais para TypeScript no renderer
 declare global {
   interface Window {
     mdStudio: typeof mdStudioAPI;
