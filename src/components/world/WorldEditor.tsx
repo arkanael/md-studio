@@ -5,13 +5,13 @@ import { addScene, sceneSelectors } from '../../store/features/scenes/scenesSlic
 import type { RootState } from '../../store/index';
 import SceneView from './SceneView';
 import NavigatorPanel from '../navigator/NavigatorPanel';
+import PropertiesPanel from '../properties/PropertiesPanel';
 import styled from 'styled-components';
 
 // --------------------------------------------------
 // Layout principal do editor (inspirado no GB Studio)
 // Layout: Navigator | Canvas Area | Properties
 // --------------------------------------------------
-
 const EditorContainer = styled.div`
   display: flex;
   flex-direction: row;
@@ -111,13 +111,10 @@ const WorldEditor: React.FC = () => {
     (state: RootState) => state.editor
   );
 
-  // Pega cenas do scenesSlice (Redux normalizado)
   const scenes = useSelector(sceneSelectors.selectAll);
-
   const canvasRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
 
-  // Roda do mouse para zoom
   const handleWheel = useCallback(
     (e: React.WheelEvent) => {
       if (e.ctrlKey || e.metaKey) {
@@ -138,14 +135,12 @@ const WorldEditor: React.FC = () => {
     }
   }, [zoom]);
 
-  // Clique no canvas vazio: deselecionar
   const handleCanvasClick = useCallback((e: React.MouseEvent) => {
     if (e.target === e.currentTarget) {
       dispatch(editorActions.clearSelection());
     }
   }, [dispatch]);
 
-  // Criar nova cena
   const handleAddScene = useCallback(() => {
     dispatch(addScene({ name: `Cena ${scenes.length + 1}` }));
   }, [dispatch, scenes.length]);
@@ -157,7 +152,6 @@ const WorldEditor: React.FC = () => {
 
       {/* === AREA PRINCIPAL === */}
       <CanvasArea>
-        {/* Toolbar de ferramentas */}
         <Toolbar>
           {(['select', 'actor', 'trigger', 'collision', 'eraser'] as const).map((t) => (
             <ToolButton
@@ -177,30 +171,26 @@ const WorldEditor: React.FC = () => {
           <ToolButton
             $active={showGrid}
             onClick={() => dispatch(editorActions.toggleGrid())}
-            title="Mostrar grade"
           >
             Grade
           </ToolButton>
           <ToolButton
             $active={showCollisions}
             onClick={() => dispatch(editorActions.toggleCollisions())}
-            title="Mostrar colisoes"
           >
             Colisoes
           </ToolButton>
-          <ToolButton onClick={handleAddScene} title="Adicionar nova cena">
+          <ToolButton onClick={handleAddScene} title=\"Adicionar nova cena\">
             + Cena
           </ToolButton>
         </Toolbar>
 
-        {/* Canvas de edicao */}
         <WorldCanvas
           ref={canvasRef}
           onWheel={handleWheel}
           onMouseMove={handleMouseMove}
           onClick={handleCanvasClick}
         >
-          {/* Renderizar cenas do Redux Store */}
           {scenes.map((scene) => (
             <SceneView
               key={scene.id}
@@ -209,38 +199,26 @@ const WorldEditor: React.FC = () => {
               showGrid={showGrid}
               showCollisions={showCollisions}
               isSelected={scene.id === focusedSceneId}
-              onSelect={() => dispatch(editorActions.focusScene(scene.id))}
+              onSelect={() => dispatch(editorActions.selectScene(scene.id))}
             />
           ))}
 
-          {/* Mensagem quando nao ha cenas */}
           {scenes.length === 0 && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '50%',
-                left: '50%',
-                transform: 'translate(-50%, -50%)',
-                textAlign: 'center',
-                color: '#555',
-              }}
-            >
+            <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)', textAlign: 'center', color: '#555' }}>
               <div style={{ fontSize: 48, marginBottom: 16 }}>+</div>
-              <div style={{ fontSize: 14 }}>Clique em "+ Cena" para criar sua primeira cena</div>
+              <div>Clique em \"+ Cena\" para criar sua primeira cena</div>
             </div>
           )}
 
-          {/* Controles de zoom */}
           <ZoomControls>
-            <ZoomBtn onClick={() => dispatch(editorActions.zoomIn())} title="Zoom +">+</ZoomBtn>
-            <ZoomBtn onClick={() => dispatch(editorActions.resetZoom())} title="Reset zoom">
+            <ZoomBtn onClick={() => dispatch(editorActions.zoomIn())}>+</ZoomBtn>
+            <ZoomBtn onClick={() => dispatch(editorActions.resetZoom())}>
               {Math.round(zoom * 100)}%
             </ZoomBtn>
-            <ZoomBtn onClick={() => dispatch(editorActions.zoomOut())} title="Zoom -">-</ZoomBtn>
+            <ZoomBtn onClick={() => dispatch(editorActions.zoomOut())}>-</ZoomBtn>
           </ZoomControls>
         </WorldCanvas>
 
-        {/* Barra de status */}
         <StatusBar>
           <span>Tile: ({mousePos.x}, {mousePos.y})</span>
           <span>Zoom: {Math.round(zoom * 100)}%</span>
@@ -251,6 +229,9 @@ const WorldEditor: React.FC = () => {
           </span>
         </StatusBar>
       </CanvasArea>
+
+      {/* === PROPERTIES PANEL === */}
+      <PropertiesPanel />
     </EditorContainer>
   );
 };
