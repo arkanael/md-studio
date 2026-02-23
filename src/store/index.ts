@@ -1,16 +1,17 @@
 import { configureStore } from '@reduxjs/toolkit';
 import editorReducer from './features/editor/editorSlice';
 import entitiesReducer from './features/entities/entitiesSlice';
+import projectReducer from './projectSlice';
 
 // -------------------------------------------------
 // Store Redux - MD Studio
-// Estado global do editor visual
+// Estado global do editor visual + projeto
 // -------------------------------------------------
-
 export const store = configureStore({
   reducer: {
-    editor: editorReducer,
-    entities: entitiesReducer,
+    project: projectReducer,   // tela atual, metadados do projeto
+    editor: editorReducer,     // estado do editor (zoom, pan, tool)
+    entities: entitiesReducer, // atores, triggers, backgrounds, tilesets
   },
   middleware: (getDefaultMiddleware) =>
     getDefaultMiddleware({
@@ -24,5 +25,4 @@ export const store = configureStore({
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch;
-
 export default store;
