@@ -1,8 +1,11 @@
 import React from 'react';
-import { Provider } from 'react-redux';
+import { Provider, useSelector, useDispatch } from 'react-redux';
 import { store } from '../store/store';
-import WorldEditor from '../components/world/WorldEditor';
 import { createGlobalStyle } from 'styled-components';
+import WorldEditor from '../components/world/WorldEditor';
+import NewProjectScreen from '../components/start/NewProjectScreen';
+import { createProject, closeProject } from '../store/projectSlice';
+import type { RootState } from '../store/store';
 
 // -------------------------------------------------------
 // Estilos globais do MD Studio
@@ -25,13 +28,55 @@ const GlobalStyle = createGlobalStyle`
 `;
 
 // -------------------------------------------------------
+// AppRouter - Controla qual tela exibir
+// new-project -> NewProjectScreen (Getting Started)
+// editor      -> WorldEditor (editor principal)
+// -------------------------------------------------------
+const AppRouter: React.FC = () => {
+  const dispatch = useDispatch();
+  const currentScreen = useSelector(
+    (state: RootState) => state.project.currentScreen
+  );
+
+  const handleCreateProject = (
+    name: string,
+    path: string,
+    templateId: string
+  ) => {
+    dispatch(createProject({ name, path, templateId }));
+  };
+
+  const handleOpenProject = () => {
+    // No Electron, abre dialogo de arquivo via IPC
+    if (window.mdStudio?.openProject) {
+      window.mdStudio.openProject().then((projectMeta: any) => {
+        if (projectMeta) {
+          dispatch(createProject(projectMeta));
+        }
+      });
+    }
+  };
+
+  if (currentScreen === 'new-project') {
+    return (
+      <NewProjectScreen
+        onCreateProject={handleCreateProject}
+        onOpenProject={handleOpenProject}
+      />
+    );
+  }
+
+  return <WorldEditor />;
+};
+
+// -------------------------------------------------------
 // App - Raiz da aplicacao MD Studio
 // Electron + React + Redux
 // -------------------------------------------------------
 const App: React.FC = () => (
   <Provider store={store}>
     <GlobalStyle />
-    <WorldEditor />
+    <AppRouter />
   </Provider>
 );
 
