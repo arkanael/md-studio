@@ -1,21 +1,46 @@
 import React, { useRef, useEffect, useCallback, useState } from 'react';
 import styled from 'styled-components';
-import { useDispatch, useSelector } from 'react-redux';
-import { RootState } from '../../store';
+import { useDispatch } from 'react-redux';
 import { updateScene } from '../../store/features/editor/editorSlice';
+import type { MDSceneType } from '../../lib/scenes/sceneTypes';
+import type { CollisionBrushTool } from '../../lib/scenes/collisionTypes';
+import {
+  COLLISION_FLAG,
+  COLLISION_TILE_DEFINITIONS,
+  getCollisionTilesForSceneType,
+  getCollisionColor,
+  getCollisionSymbol,
+  hasCollisionFlag,
+} from '../../lib/scenes/collisionTypes';
+import {
+  applyPencil,
+  applyEraser,
+  applyMagicBrush,
+  applySlopeBrush,
+  applyCollisionMap,
+} from '../../lib/scenes/collisionUtils';
+import { CollisionToolbar } from './CollisionToolbar';
 
-// -------------------------------------------------
-// CollisionEditor - Editor de colisoes por tile
-// Permite pintar/apagar tiles de colisao
-// Gera array binario para uso no SGDK
-// Mapa de colisao: 1 = solido, 0 = livre
-// -------------------------------------------------
+// --------------------------------------------------
+// CollisionEditor - Editor canvas de colisoes
+// Suporta: Solid, Top, Bottom, Left, Right,
+//          Ladder (platformer only), Slope Up/Down
+// Ferramentas: Pencil, Eraser, Slope Brush, Magic Brush
+// Bitmask uint8 por tile - compativel com SGDK
+// --------------------------------------------------
 
 const TILE_SIZE = 16;
 
 const Wrapper = styled.div`
+  display: flex;
+  height: 100%;
+  background: #111;
+`;
+
+const CanvasArea = styled.div`
+  flex: 1;
   position: relative;
-  display: inline-block;
+  overflow: auto;
   cursor: crosshair;
   user-select: none;
 `;
@@ -25,32 +50,38 @@ const Canvas = styled.canvas`
   image-rendering: pixelated;
 `;
 
-const Overlay = styled.div`
+const StatsBar = styled.div`
   position: absolute;
-  top: 0;
-  right: 0;
-  background: rgba(13,13,26,0.85);
-  border: 1px solid #e94560;
+  bottom: 8px;
+  right: 8px;
+  background: rgba(13,13,26,0.9);
+  border: 1px solid #333;
   border-radius: 4px;
-  padding: 6px 10px;
+  padding: 4px 8px;
   font-size: 10px;
-  color: #aaa;
+  color: #888;
   pointer-events: none;
+  display: flex;
+  gap: 10px;
+`;
 
-  span { color: #e94560; margin-right: 4px; }
+const StatItem = styled.span<{ color?: string }>`
+  color: ${(p) => p.color ?? '#888'};
 `;
 
 export interface CollisionEditorProps {
   sceneId: string;
-  width: number;   // largura em tiles
-  height: number;  // altura em tiles
-  collisions: number[];  // array 1D de bits: 0=livre, 1=solido
+  sceneType: MDSceneType;
+  width: number;
+  height: number;
+  collisions: number[];
   zoom?: number;
   onCollisionsChange?: (newCollisions: number[]) => void;
 }
 
 const CollisionEditor: React.FC<CollisionEditorProps> = ({
   sceneId,
+  sceneType,
   width,
   height,
   collisions,
@@ -59,15 +90,26 @@ const CollisionEditor: React.FC<CollisionEditorProps> = ({
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const dispatch = useDispatch();
+
+  // Estado do editor
+  const [activeTool, setActiveTool] = useState<CollisionBrushTool>('pencil');
+  const [selectedTileId, setSelectedTileId] = useState<string>('solid');
   const [isPainting, setIsPainting] = useState(false);
-  const [paintMode, setPaintMode] = useState<0 | 1>(1); // 1=pintar, 0=apagar
+  const [slopeStart, setSlopeStart] = useState<{ tx: number; ty: number } | null>(null);
+  const [previewMap, setPreviewMap] = useState<Map<number, number>>(new Map());
 
   const tileW = TILE_SIZE * zoom;
   const tileH = TILE_SIZE * zoom;
   const canvasW = width * tileW;
   const canvasH = height * tileH;
 
-  // Desenha o grid de colisoes no canvas
+  // Obtem os flags do tile selecionado
+  const getSelectedFlags = useCallback((): number => {
+    const def = COLLISION_TILE_DEFINITIONS.find((d) => d.id === selectedTileId);
+    return def?.flags ?? COLLISION_FLAG.SOLID;
+  }, [selectedTileId]);
+
+  // Renderiza o canvas
   const draw = useCallback(() => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -79,40 +121,64 @@ const CollisionEditor: React.FC<CollisionEditorProps> = ({
     for (let ty = 0; ty < height; ty++) {
       for (let tx = 0; tx < width; tx++) {
         const idx = ty * width + tx;
-        const isSolid = collisions[idx] === 1;
         const x = tx * tileW;
         const y = ty * tileH;
 
-        if (isSolid) {
-          // Tile solido - vermelho semi-transparente
-          ctx.fillStyle = 'rgba(233, 69, 96, 0.55)';
+        // Flags: usa preview do slope brush se existir
+        const flags = previewMap.has(idx)
+          ? previewMap.get(idx)!
+          : (collisions[idx] ?? 0);
+
+        if (flags !== 0) {
+          // Fundo colorido
+          ctx.fillStyle = getCollisionColor(flags);
           ctx.fillRect(x, y, tileW, tileH);
 
-          // Borda do tile solido
-          ctx.strokeStyle = 'rgba(233, 69, 96, 0.9)';
-          ctx.lineWidth = 1;
-          ctx.strokeRect(x + 0.5, y + 0.5, tileW - 1, tileH - 1);
+          // Borda superior - indica TOP
+          if (hasCollisionFlag(flags, COLLISION_FLAG.TOP)) {
+            ctx.fillStyle = 'rgba(255,165,0,0.9)';
+            ctx.fillRect(x, y, tileW, 2);
+          }
+          // Borda inferior - indica BOTTOM
+          if (hasCollisionFlag(flags, COLLISION_FLAG.BOTTOM)) {
+            ctx.fillStyle = 'rgba(255,165,0,0.9)';
+            ctx.fillRect(x, y + tileH - 2, tileW, 2);
+          }
+          // Borda esquerda - indica LEFT
+          if (hasCollisionFlag(flags, COLLISION_FLAG.LEFT)) {
+            ctx.fillStyle = 'rgba(100,200,255,0.9)';
+            ctx.fillRect(x, y, 2, tileH);
+          }
+          // Borda direita - indica RIGHT
+          if (hasCollisionFlag(flags, COLLISION_FLAG.RIGHT)) {
+            ctx.fillStyle = 'rgba(100,200,255,0.9)';
+            ctx.fillRect(x + tileW - 2, y, 2, tileH);
+          }
 
-          // X no centro
-          ctx.fillStyle = 'rgba(233, 69, 96, 0.7)';
-          ctx.font = `${Math.max(8, tileW * 0.5)}px monospace`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText('x', x + tileW / 2, y + tileH / 2);
-        } else {
-          // Grid vazio
-          ctx.strokeStyle = 'rgba(255,255,255,0.05)';
-          ctx.lineWidth = 0.5;
-          ctx.strokeRect(x, y, tileW, tileH);
+          // Simbolo central
+          const sym = getCollisionSymbol(flags);
+          if (sym) {
+            ctx.fillStyle = 'rgba(255,255,255,0.8)';
+            ctx.font = `bold ${Math.max(8, tileW * 0.45)}px monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.fillText(sym, x + tileW / 2, y + tileH / 2);
+          }
         }
+
+        // Grid vazio
+        ctx.strokeStyle = flags !== 0
+          ? 'rgba(255,255,255,0.08)'
+          : 'rgba(255,255,255,0.04)';
+        ctx.lineWidth = 0.5;
+        ctx.strokeRect(x + 0.5, y + 0.5, tileW - 1, tileH - 1);
       }
     }
-  }, [collisions, width, height, tileW, tileH, canvasW, canvasH]);
+  }, [collisions, previewMap, width, height, tileW, tileH, canvasW, canvasH]);
 
-  useEffect(() => {
-    draw();
-  }, [draw]);
+  useEffect(() => { draw(); }, [draw]);
 
+  // Obtém tile sob o cursor
   const getTileFromEvent = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const rect = canvasRef.current!.getBoundingClientRect();
     const mx = e.clientX - rect.left;
@@ -123,58 +189,103 @@ const CollisionEditor: React.FC<CollisionEditorProps> = ({
     return { tx, ty, idx: ty * width + tx };
   };
 
-  const paintTile = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const tile = getTileFromEvent(e);
-    if (!tile) return;
-
-    const newCollisions = [...collisions];
-    newCollisions[tile.idx] = paintMode;
-
+  // Publica novo estado de colisoes
+  const publishCollisions = useCallback((newCols: number[]) => {
     if (onCollisionsChange) {
-      onCollisionsChange(newCollisions);
+      onCollisionsChange(newCols);
     } else {
-      dispatch(updateScene({
-        id: sceneId,
-        changes: { collisions: newCollisions },
-      }));
+      dispatch(updateScene({ id: sceneId, changes: { collisions: newCols } }));
     }
-  };
+  }, [sceneId, onCollisionsChange, dispatch]);
 
   const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const tile = getTileFromEvent(e);
     if (!tile) return;
-    // Define o modo com base no estado atual do tile clicado
-    const currentVal = collisions[tile.idx];
-    setPaintMode(currentVal === 1 ? 0 : 1);
     setIsPainting(true);
-    paintTile(e);
+
+    if (activeTool === 'slope') {
+      setSlopeStart({ tx: tile.tx, ty: tile.ty });
+      return;
+    }
+
+    const flags = getSelectedFlags();
+
+    if (activeTool === 'pencil') {
+      publishCollisions(applyPencil(collisions, tile.idx, flags));
+    } else if (activeTool === 'eraser') {
+      publishCollisions(applyEraser(collisions, tile.idx));
+    } else if (activeTool === 'magic') {
+      publishCollisions(applyMagicBrush(collisions, tile.idx, flags));
+      setIsPainting(false);
+    }
   };
 
   const handleMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (!isPainting) return;
-    paintTile(e);
+    const tile = getTileFromEvent(e);
+    if (!tile) return;
+
+    if (activeTool === 'slope' && slopeStart) {
+      // Mostra preview do slope
+      const opts = {
+        ctrlKey: e.ctrlKey,
+        shiftKey: e.shiftKey,
+        ctrlShiftKey: e.ctrlKey && e.shiftKey,
+      };
+      const map = applySlopeBrush(slopeStart, { tx: tile.tx, ty: tile.ty }, width, height, opts);
+      setPreviewMap(map);
+      return;
+    }
+
+    const flags = getSelectedFlags();
+    if (activeTool === 'pencil') {
+      publishCollisions(applyPencil(collisions, tile.idx, flags));
+    } else if (activeTool === 'eraser') {
+      publishCollisions(applyEraser(collisions, tile.idx));
+    }
   };
 
-  const handleMouseUp = () => setIsPainting(false);
+  const handleMouseUp = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (activeTool === 'slope' && slopeStart && isPainting) {
+      const tile = getTileFromEvent(e);
+      if (tile && previewMap.size > 0) {
+        publishCollisions(applyCollisionMap(collisions, previewMap));
+      }
+      setSlopeStart(null);
+      setPreviewMap(new Map());
+    }
+    setIsPainting(false);
+  };
 
-  const solidCount = collisions.filter(c => c === 1).length;
+  // Stats
+  const solidCount = collisions.filter((c) => c !== 0).length;
   const totalTiles = width * height;
 
   return (
     <Wrapper>
-      <Canvas
-        ref={canvasRef}
-        width={canvasW}
-        height={canvasH}
-        onMouseDown={handleMouseDown}
-        onMouseMove={handleMouseMove}
-        onMouseUp={handleMouseUp}
-        onMouseLeave={handleMouseUp}
+      <CollisionToolbar
+        sceneType={sceneType}
+        selectedTileId={selectedTileId}
+        activeTool={activeTool}
+        onSelectTile={setSelectedTileId}
+        onSelectTool={setActiveTool}
       />
-      <Overlay>
-        <span>{solidCount}</span>solidos /
-        <span style={{ marginLeft: 6 }}>{totalTiles - solidCount}</span>livres
-      </Overlay>
+      <CanvasArea>
+        <Canvas
+          ref={canvasRef}
+          width={canvasW}
+          height={canvasH}
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        />
+        <StatsBar>
+          <StatItem color="#e94560">{solidCount} colisoes</StatItem>
+          <StatItem>{totalTiles - solidCount} livres</StatItem>
+          <StatItem color="#5b9bd5">{activeTool}</StatItem>
+        </StatsBar>
+      </CanvasArea>
     </Wrapper>
   );
 };
