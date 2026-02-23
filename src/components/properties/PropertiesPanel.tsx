@@ -6,6 +6,7 @@ import { editorActions } from '../../store/features/editor/editorSlice';
 import { updateScene, sceneSelectors } from '../../store/features/scenes/scenesSlice';
 import { backgroundSelectors, musicSelectors, paletteSelectors } from '../../store/features/entities/entitiesSlice';
 import ActorEditor from '../editors/ActorEditor';
+import TriggerEditor from '../editors/TriggerEditor';
 
 const Panel = styled.div`
   width: 280px;
@@ -41,6 +42,7 @@ const Content = styled.div`
 `;
 
 const Section = styled.div` margin-bottom: 16px; `;
+
 const SectionTitle = styled.div`
   font-size: 10px;
   color: #555;
@@ -75,6 +77,7 @@ const Field = styled.div`
 `;
 
 const TabBar = styled.div` display: flex; border-bottom: 1px solid #0f3460; `;
+
 const Tab = styled.button<{ active: boolean }>`
   flex: 1;
   padding: 8px 4px;
@@ -98,7 +101,8 @@ const PropertiesPanel: React.FC = () => {
   const dispatch = useDispatch();
   const [activeTab, setActiveTab] = useState<'scene' | 'actors' | 'triggers' | 'events'>('scene');
   
-  const { selectedSceneId } = useSelector((state: RootState) => state.editor);
+  const { selectedSceneId, selectionType, selectedEntityId } = useSelector((state: RootState) => state.editor);
+  
   const selectedScene = useSelector((state: RootState) => 
     selectedSceneId ? sceneSelectors.selectById(state, selectedSceneId) : null
   );
@@ -119,79 +123,116 @@ const PropertiesPanel: React.FC = () => {
     dispatch(updateScene({ id: selectedScene.id, changes }));
   };
 
+  // Se houver uma entidade selecionada (Ator ou Trigger), mostramos o editor dela
+  const selectedActor = selectionType === 'actor' 
+    ? selectedScene.actors.find(a => a.id === selectedEntityId) 
+    : null;
+    
+  const selectedTrigger = selectionType === 'trigger' 
+    ? selectedScene.triggers.find(t => t.id === selectedEntityId) 
+    : null;
+
   return (
     <Panel>
       <PanelHeader>
-        Cena: {selectedScene.name}
+        {selectionType === 'actor' && 'Ator: ' + (selectedActor?.name || 'Sem nome')}
+        {selectionType === 'trigger' && 'Trigger: ' + (selectedTrigger?.name || 'Sem nome')}
+        {selectionType === 'scene' && 'Cena: ' + selectedScene.name}
+        {selectionType === null && 'Cena: ' + selectedScene.name}
         <button onClick={() => dispatch(editorActions.clearSelection())} style={{background:'none', border:'none', color:'#555', cursor:'pointer'}}>x</button>
       </PanelHeader>
       
       <TabBar>
         <Tab active={activeTab === 'scene'} onClick={() => setActiveTab('scene')}>Cena</Tab>
         <Tab active={activeTab === 'actors'} onClick={() => setActiveTab('actors')}>Atores</Tab>
+        <Tab active={activeTab === 'triggers'} onClick={() => setActiveTab('triggers')}>Triggers</Tab>
       </TabBar>
 
       <Content>
-        {activeTab === 'scene' && (
-          <>
-            <Section>
-              <SectionTitle>Basico</SectionTitle>
-              <Field>
-                <label>Nome</label>
-                <input value={selectedScene.name} onChange={e => handleUpdateScene({ name: e.target.value })} />
-              </Field>
-              <Field>
-                <label>Tipo (Logic)</label>
-                <select value={(selectedScene as any).type || 'topdown'} onChange={e => handleUpdateScene({ type: e.target.value })}>
-                  {SCENE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
-                </select>
-              </Field>
-            </Section>
-            
-            <Section>
-              <SectionTitle>Assets (SGDK)</SectionTitle>
-              <Field>
-                <label>Background (Plane A)</label>
-                <select value={selectedScene.backgroundId} onChange={e => handleUpdateScene({ backgroundId: e.target.value })}>
-                  <option value=\"\">Nenhum</option>
-                  {backgrounds.map(bg => <option key={bg.id} value={bg.id}>{bg.name}</option>)}
-                </select>
-              </Field>
-              <Field>
-                <label>Musica (XGM)</label>
-                <select value={selectedScene.musicId || ''} onChange={e => handleUpdateScene({ musicId: e.target.value })}>
-                  <option value=\"\">Nenhuma</option>
-                  {music.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
-                </select>
-              </Field>
-            </Section>
-
-            <Section>
-              <SectionTitle>Player Start</SectionTitle>
-              <div style={{display:'flex', gap:'8px'}}>
-                <Field style={{flex:1}}>
-                  <label>X</label>
-                  <input type=\"number\" value={selectedScene.playerStartX} onChange={e => handleUpdateScene({ playerStartX: parseInt(e.target.value) || 0 })} />
-                </Field>
-                <Field style={{flex:1}}>
-                  <label>Y</label>
-                  <input type=\"number\" value={selectedScene.playerStartY} onChange={e => handleUpdateScene({ playerStartY: parseInt(e.target.value) || 0 })} />
-                </Field>
-              </div>
-            </Section>
-          </>
+        {selectionType === 'actor' && selectedActor && (
+           <ActorEditor sceneId={selectedScene.id} actor={selectedActor} />
         )}
         
-        {activeTab === 'actors' && (
-          <Section>
-            <SectionTitle>Atores na cena ({selectedScene.actors.length})</SectionTitle>
-            {selectedScene.actors.map(actor => (
-              <div key={actor.id} style={{padding:'6px', background:'#16213e', border:'1px solid #0f3460', borderRadius:'4px', marginBottom:'4px', color:'#aaa', fontSize:'11px', cursor:'pointer'}}
-                   onClick={() => dispatch(editorActions.selectActor({ sceneId: selectedScene.id, actorId: actor.id }))}>
-                🎭 {actor.name || 'Ator'} ({actor.id.slice(0,4)})
-              </div>
-            ))}
-          </Section>
+        {selectionType === 'trigger' && selectedTrigger && (
+           <TriggerEditor sceneId={selectedScene.id} trigger={selectedTrigger} />
+        )}
+
+        {(selectionType === 'scene' || selectionType === null) && (
+          <>
+            {activeTab === 'scene' && (
+              <>
+                <Section>
+                  <SectionTitle>Basico</SectionTitle>
+                  <Field>
+                    <label>Nome</label>
+                    <input value={selectedScene.name} onChange={e => handleUpdateScene({ name: e.target.value })} />
+                  </Field>
+                  <Field>
+                    <label>Tipo (Logic)</label>
+                    <select value={(selectedScene as any).type || 'topdown'} onChange={e => handleUpdateScene({ type: e.target.value })}>
+                      {SCENE_TYPES.map(t => <option key={t.value} value={t.value}>{t.label}</option>)}
+                    </select>
+                  </Field>
+                </Section>
+                
+                <Section>
+                  <SectionTitle>Assets (SGDK)</SectionTitle>
+                  <Field>
+                    <label>Background (Plane A)</label>
+                    <select value={selectedScene.backgroundId} onChange={e => handleUpdateScene({ backgroundId: e.target.value })}>
+                      <option value="">Nenhum</option>
+                      {backgrounds.map(bg => <option key={bg.id} value={bg.id}>{bg.name}</option>)}
+                    </select>
+                  </Field>
+                  <Field>
+                    <label>Musica (XGM)</label>
+                    <select value={selectedScene.musicId || ''} onChange={e => handleUpdateScene({ musicId: e.target.value })}>
+                      <option value="">Nenhuma</option>
+                      {music.map(m => <option key={m.id} value={m.id}>{m.name}</option>)}
+                    </select>
+                  </Field>
+                </Section>
+
+                <Section>
+                  <SectionTitle>Player Start</SectionTitle>
+                  <div style={{display:'flex', gap:'8px'}}>
+                    <Field style={{flex:1}}>
+                      <label>X</label>
+                      <input type="number" value={selectedScene.playerStartX} onChange={e => handleUpdateScene({ playerStartX: parseInt(e.target.value) || 0 })} />
+                    </Field>
+                    <Field style={{flex:1}}>
+                      <label>Y</label>
+                      <input type="number" value={selectedScene.playerStartY} onChange={e => handleUpdateScene({ playerStartY: parseInt(e.target.value) || 0 })} />
+                    </Field>
+                  </div>
+                </Section>
+              </>
+            )}
+
+            {activeTab === 'actors' && (
+              <Section>
+                <SectionTitle>Atores na cena ({selectedScene.actors.length})</SectionTitle>
+                {selectedScene.actors.map(actor => (
+                  <div key={actor.id} style={{padding:'6px', background:'#16213e', border:'1px solid #0f3460', borderRadius:'4px', marginBottom:'4px', color:'#aaa', fontSize:'11px', cursor:'pointer'}}
+                    onClick={() => dispatch(editorActions.selectActor({ sceneId: selectedScene.id, actorId: actor.id }))}>
+                    🎭 {actor.name || 'Ator'} ({actor.id.slice(0,4)})
+                  </div>
+                ))}
+              </Section>
+            )}
+
+            {activeTab === 'triggers' && (
+              <Section>
+                <SectionTitle>Triggers na cena ({selectedScene.triggers.length})</SectionTitle>
+                {selectedScene.triggers.map(trigger => (
+                  <div key={trigger.id} style={{padding:'6px', background:'#16213e', border:'1px solid #0f3460', borderRadius:'4px', marginBottom:'4px', color:'#aaa', fontSize:'11px', cursor:'pointer'}}
+                    onClick={() => dispatch(editorActions.selectTrigger({ sceneId: selectedScene.id, triggerId: trigger.id }))}>
+                    ⚡ {trigger.name || 'Trigger'} ({trigger.id.slice(0,4)})
+                  </div>
+                ))}
+              </Section>
+            )}
+          </>
         )}
       </Content>
     </Panel>
