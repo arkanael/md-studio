@@ -1,0 +1,58 @@
+{
+  "appId": "com.futuroon.mdstudio",
+  "productName": "MD Studio",
+  "copyright": "Copyright 2024 FuturoOn",
+  "directories": {
+    "buildResources": "assets",
+    "output": "dist"
+  },
+  "files": [
+    "build/**/*",
+    "src/main/**/*.js",
+    "node_modules/**/*",
+    "package.json"
+  ],
+  "extraResources": [
+    {
+      "from": "assets",
+      "to": "assets",
+      "filter": ["**/*"]
+    }
+  ],
+  "win": {
+    "target": [
+      { "target": "nsis", "arch": ["x64"] }
+    ],
+    "icon": "assets/icon.ico"
+  },
+  "linux": {
+    "target": [
+      { "target": "AppImage", "arch": ["x64"] },
+      { "target": "deb", "arch": ["x64"] }
+    ],
+    "icon": "assets/icon.png",
+    "category": "Development"
+  },
+  "mac": {
+    "target": [
+      { "target": "dmg", "arch": ["x64", "arm64"] }
+    ],
+    "icon": "assets/icon.icns",
+    "category": "public.app-category.developer-tools"
+  },
+  "nsis": {
+    "oneClick": false,
+    "perMachine": false,
+    "allowToChangeInstallationDirectory": true,
+    "createDesktopShortcut": true,
+    "createStartMenuShortcut": true,
+    "shortcutName": "MD Studio"
+  },
+  "publish": [
+    {
+      "provider": "github",
+      "owner": "arkanael",
+      "repo": "md-studio"
+    }
+  ]
+}
