@@ -1,14 +1,15 @@
-import React, { useCallback, useRef, useState, useEffect } from 'react';
+import React, { useCallback, useRef, useState } from 'react';
 import { useDispatch, useSelector } from 'react-redux';
 import { editorActions } from '../../store/features/editor/editorSlice';
-import type { RootState } from '../../store/store';
-import type { MDScene } from '../../store/features/entities/entitiesTypes';
+import { addScene, sceneSelectors } from '../../store/features/scenes/scenesSlice';
+import type { RootState } from '../../store/index';
 import SceneView from './SceneView';
+import NavigatorPanel from '../navigator/NavigatorPanel';
 import styled from 'styled-components';
 
 // --------------------------------------------------
 // Layout principal do editor (inspirado no GB Studio)
-// Layout: Sidebar | Canvas Area
+// Layout: Navigator | Canvas Area | Properties
 // --------------------------------------------------
 
 const EditorContainer = styled.div`
@@ -20,50 +21,6 @@ const EditorContainer = styled.div`
   background: #1a1a2e;
   color: #e0e0e0;
   font-family: 'Segoe UI', system-ui, sans-serif;
-`;
-
-const Sidebar = styled.aside`
-  width: 220px;
-  min-width: 180px;
-  max-width: 300px;
-  background: #16213e;
-  border-right: 1px solid #0f3460;
-  display: flex;
-  flex-direction: column;
-  overflow: hidden;
-  flex-shrink: 0;
-`;
-
-const SidebarHeader = styled.div`
-  padding: 12px 16px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 1px;
-  color: #e94560;
-  border-bottom: 1px solid #0f3460;
-`;
-
-const SidebarList = styled.ul`
-  list-style: none;
-  margin: 0;
-  padding: 8px 0;
-  overflow-y: auto;
-  flex: 1;
-`;
-
-const SidebarItem = styled.li<{ $active?: boolean }>`
-  padding: 8px 16px;
-  cursor: pointer;
-  font-size: 13px;
-  border-left: 3px solid ${(p) => (p.$active ? '#e94560' : 'transparent')};
-  background: ${(p) => (p.$active ? '#0f3460' : 'transparent')};
-  color: ${(p) => (p.$active ? '#ffffff' : '#a0a0c0')};
-  transition: all 0.15s;
-  &:hover {
-    background: #0f3460;
-    color: #fff;
-  }
 `;
 
 const CanvasArea = styled.div`
@@ -153,8 +110,9 @@ const WorldEditor: React.FC = () => {
   const { zoom, tool, focusedSceneId, showGrid, showCollisions, isModified } = useSelector(
     (state: RootState) => state.editor
   );
-  // Simulando lista de cenas para o painel lateral
-  const scenes: MDScene[] = useSelector((state: RootState) => state.project?.scenes ?? []);
+
+  // Pega cenas do scenesSlice (Redux normalizado)
+  const scenes = useSelector(sceneSelectors.selectAll);
 
   const canvasRef = useRef<HTMLDivElement>(null);
   const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
@@ -180,43 +138,22 @@ const WorldEditor: React.FC = () => {
     }
   }, [zoom]);
 
+  // Clique no canvas vazio: deselecionar
+  const handleCanvasClick = useCallback((e: React.MouseEvent) => {
+    if (e.target === e.currentTarget) {
+      dispatch(editorActions.clearSelection());
+    }
+  }, [dispatch]);
+
+  // Criar nova cena
+  const handleAddScene = useCallback(() => {
+    dispatch(addScene({ name: `Cena ${scenes.length + 1}` }));
+  }, [dispatch, scenes.length]);
+
   return (
     <EditorContainer>
-      {/* === SIDEBAR ESQUERDA === */}
-      <Sidebar>
-        <SidebarHeader>MD Studio</SidebarHeader>
-
-        {/* Secao: Cenas */}
-        <SidebarHeader style={{ fontSize: '10px', padding: '8px 16px' }}>Cenas</SidebarHeader>
-        <SidebarList>
-          {scenes.length === 0 && (
-            <SidebarItem
-              onClick={() => {/* TODO: criar nova cena */}}
-              style={{ color: '#666', fontStyle: 'italic' }}
-            >
-              + Nova cena
-            </SidebarItem>
-          )}
-          {scenes.map((scene) => (
-            <SidebarItem
-              key={scene.id}
-              $active={scene.id === focusedSceneId}
-              onClick={() => dispatch(editorActions.focusScene(scene.id))}
-            >
-              {scene.name || 'Cena sem nome'}
-            </SidebarItem>
-          ))}
-        </SidebarList>
-
-        {/* Botao voltar ao mundo */}
-        {focusedSceneId && (
-          <div style={{ padding: '8px 12px', borderTop: '1px solid #0f3460' }}>
-            <ToolButton onClick={() => dispatch(editorActions.goBackToWorld())}>
-              Voltar ao mapa
-            </ToolButton>
-          </div>
-        )}
-      </Sidebar>
+      {/* === NAVIGATOR PANEL === */}
+      <NavigatorPanel />
 
       {/* === AREA PRINCIPAL === */}
       <CanvasArea>
@@ -236,9 +173,7 @@ const WorldEditor: React.FC = () => {
               {t === 'eraser' && 'Apagar'}
             </ToolButton>
           ))}
-
           <div style={{ flex: 1 }} />
-
           <ToolButton
             $active={showGrid}
             onClick={() => dispatch(editorActions.toggleGrid())}
@@ -253,6 +188,9 @@ const WorldEditor: React.FC = () => {
           >
             Colisoes
           </ToolButton>
+          <ToolButton onClick={handleAddScene} title="Adicionar nova cena">
+            + Cena
+          </ToolButton>
         </Toolbar>
 
         {/* Canvas de edicao */}
@@ -260,8 +198,9 @@ const WorldEditor: React.FC = () => {
           ref={canvasRef}
           onWheel={handleWheel}
           onMouseMove={handleMouseMove}
+          onClick={handleCanvasClick}
         >
-          {/* Renderizar cenas */}
+          {/* Renderizar cenas do Redux Store */}
           {scenes.map((scene) => (
             <SceneView
               key={scene.id}
@@ -273,6 +212,23 @@ const WorldEditor: React.FC = () => {
               onSelect={() => dispatch(editorActions.focusScene(scene.id))}
             />
           ))}
+
+          {/* Mensagem quando nao ha cenas */}
+          {scenes.length === 0 && (
+            <div
+              style={{
+                position: 'absolute',
+                top: '50%',
+                left: '50%',
+                transform: 'translate(-50%, -50%)',
+                textAlign: 'center',
+                color: '#555',
+              }}
+            >
+              <div style={{ fontSize: 48, marginBottom: 16 }}>+</div>
+              <div style={{ fontSize: 14 }}>Clique em "+ Cena" para criar sua primeira cena</div>
+            </div>
+          )}
 
           {/* Controles de zoom */}
           <ZoomControls>
@@ -289,6 +245,7 @@ const WorldEditor: React.FC = () => {
           <span>Tile: ({mousePos.x}, {mousePos.y})</span>
           <span>Zoom: {Math.round(zoom * 100)}%</span>
           <span>Ferramenta: {tool}</span>
+          <span>Cenas: {scenes.length}</span>
           <span style={{ marginLeft: 'auto', color: isModified ? '#e94560' : '#4caf50' }}>
             {isModified ? 'Nao salvo' : 'Salvo'}
           </span>
