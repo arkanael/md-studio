@@ -11,107 +11,112 @@
  * 3. Adicione ao array allEvents
  */
 
-// ─── Actor Events ──────────────────────────────────────────────────────────
-const { actorActions }                         = require('./eventActorActions');
-const { activateActor, deactivateActor }       = require('./eventActorActivateDeactivate');
+// ─── Actor Events ───────────────────────────────────────────────────────────
+const { actorActions }                              = require('./eventActorActions');
+const { activateActor, deactivateActor }            = require('./eventActorActivateDeactivate');
 const { setActorAnimFrame,
         setActorAnimSpeed,
-        setActorAnimState }                    = require('./eventActorAnimProperties');
-const { playActorAnim, stopActorAnim }         = require('./eventActorAnimate');
-const { setActorCollisions }                   = require('./eventActorCollisions');
-const { hideActor, showActor }                 = require('./eventActorHideShow');
-const { cancelActorMove }                      = require('./eventActorMoveCancel');
-const { moveActorRelative }                    = require('./eventActorMoveRelative');
-const { moveActorTo }                          = require('./eventActorMoveTo');
-const { setActorMovementSpeed }                = require('./eventActorMovementSpeed');
-const { setActorDirection }                    = require('./eventActorSetDirection');
-const { setActorPosition }                     = require('./eventActorSetPosition');
-const { setActorRelativePosition }             = require('./eventActorSetRelativePosition');
-const { setActorPriority }                     = require('./eventPriority');
+        setActorAnimState }                         = require('./eventActorAnimProperties');
+const { playActorAnim, stopActorAnim }              = require('./eventActorAnimate');
+const { setActorCollisions }                        = require('./eventActorCollisions');
+const { hideActor, showActor }                      = require('./eventActorHideShow');
+const { cancelActorMove }                           = require('./eventActorMoveCancel');
+const { moveActorRelative }                         = require('./eventActorMoveRelative');
+const { moveActorTo }                               = require('./eventActorMoveTo');
+const { setActorMovementSpeed }                     = require('./eventActorMovementSpeed');
+const { setActorDirection }                         = require('./eventActorSetDirection');
+const { setActorPosition }                          = require('./eventActorSetPosition');
+const { setActorRelativePosition }                  = require('./eventActorSetRelativePosition');
+const { setActorPriority }                          = require('./eventPriority');
 
-// ─── Camera Events ─────────────────────────────────────────────────────────
-const { cameraMoveTo, cameraFollowActor,
-        cameraReset }                          = require('./eventCamera');
+// ─── Camera Events ──────────────────────────────────────────────────────────
+const { cameraMoveToEvent,
+        cameraMoveToLockOnPlayerEvent,
+        cameraShakeEvent,
+        setCameraBoundsEvent,
+        setCameraLockOnPlayerEvent,
+        setCameraPositionEvent,
+        setCameraPropertyEvent }                    = require('./eventCamera');
 
-// ─── Color / Palette Events ────────────────────────────────────────────────
-const { setColor, fadePalette }                = require('./eventColor');
-const { setPaletteColor, fadePaletteEffect }   = require('./eventPalette');
+// ─── Color / Palette Events ─────────────────────────────────────────────────
+const { setColor, fadePalette }                     = require('./eventColor');
+const { setPaletteColor, fadePaletteEffect }        = require('./eventPalette');
 
-// ─── Control Flow Events ───────────────────────────────────────────────────
-const { callScript, returnFromScript }         = require('./eventControl');
-const { ifTrue, ifFalse, switchBlock }         = require('./eventControlFlow');
-const { ifVariableCompareTo }                  = require('./eventIfVariableCompareTo');
-const { ifVariableValue }                      = require('./eventIfVariableValue');
-const { loopRepeat, loopForever, loopWhile }   = require('./eventLoop');
-const { endScript, resetGame, goToCredits }    = require('./eventEnd');
+// ─── Control Flow Events ────────────────────────────────────────────────────
+const { callScript, returnFromScript }              = require('./eventControl');
+const { ifTrue, ifFalse, switchBlock }              = require('./eventControlFlow');
+const { ifVariableCompareTo }                       = require('./eventIfVariableCompareTo');
+const { ifVariableValue }                           = require('./eventIfVariableValue');
+const { loopRepeat, loopForever, loopWhile }        = require('./eventLoop');
+const { endScript, resetGame, goToCredits }         = require('./eventEnd');
 
-// ─── Dialogue Events ───────────────────────────────────────────────────────
+// ─── Dialogue Events ────────────────────────────────────────────────────────
 const { displayDialogue, displayMenu,
         displayMultipleChoice, drawText,
         closeDialogue,
-        setTextAnimSpeed }                     = require('./eventDialogue');
+        setTextAnimSpeed }                          = require('./eventDialogue');
 
-// ─── Engine Fields Events ──────────────────────────────────────────────────
+// ─── Engine Fields Events ───────────────────────────────────────────────────
 const { engineFieldUpdate,
         engineFieldStore,
-        engineFieldReset }                     = require('./eventEngineFields');
+        engineFieldReset }                          = require('./eventEngineFields');
 
-// ─── Input Events ──────────────────────────────────────────────────────────
-const { inputCheck, inputWait }                = require('./eventInput');
-const { inputCheckAll }                        = require('./eventInputCheck');
+// ─── Input Events ───────────────────────────────────────────────────────────
+const { inputCheck, inputWait }                     = require('./eventInput');
+const { inputCheckAll }                             = require('./eventInputCheck');
 const { attachScriptToButton,
         detachScriptFromButton,
-        joypadWaitForButton }                  = require('./eventJoypadInput');
+        joypadWaitForButton }                       = require('./eventJoypadInput');
 
-// ─── Math Events ───────────────────────────────────────────────────────────
+// ─── Math Events ────────────────────────────────────────────────────────────
 const { mathAdd, mathSub, mathMul,
-        mathDiv, mathMod, mathRandom }         = require('./eventMath');
+        mathDiv, mathMod, mathRandom }              = require('./eventMath');
 
-// ─── Miscellaneous Events ──────────────────────────────────────────────────
+// ─── Miscellaneous Events ───────────────────────────────────────────────────
 const { commentEvent, groupEvent,
-        lockEvent, labelEvent }                = require('./eventMisc');
+        lockEvent, labelEvent }                     = require('./eventMisc');
 
-// ─── Music & Sound Events ──────────────────────────────────────────────────
+// ─── Music & Sound Events ───────────────────────────────────────────────────
 const { playMusic, stopMusic,
-        setMusicVolume }                       = require('./eventMusic');
-const { playSoundEffect }                      = require('./eventSoundEffect');
+        setMusicVolume }                            = require('./eventMusic');
+const { playSoundEffect }                           = require('./eventSoundEffect');
 
-// ─── Overlay Events ────────────────────────────────────────────────────────
+// ─── Overlay Events ─────────────────────────────────────────────────────────
 const { showOverlay, hideOverlay,
-        moveOverlayTo }                        = require('./eventOverlay');
+        moveOverlayTo }                             = require('./eventOverlay');
 
-// ─── Plane / Scroll Events ─────────────────────────────────────────────────
-const { setPlaneScroll }                       = require('./eventPlane');
+// ─── Plane / Scroll Events ──────────────────────────────────────────────────
+const { setPlaneScroll }                            = require('./eventPlane');
 
-// ─── Save Data Events ──────────────────────────────────────────────────────
+// ─── Save Data Events ───────────────────────────────────────────────────────
 const { saveGameData, loadGameData,
-        clearGameData }                        = require('./eventSaveData');
+        clearGameData }                             = require('./eventSaveData');
 
-// ─── Scene Events ──────────────────────────────────────────────────────────
+// ─── Scene Events ───────────────────────────────────────────────────────────
 const { changeScene, pushScene,
-        popScene }                             = require('./eventScene');
-const { sceneSwitchFade }                      = require('./eventSceneSwitch');
+        popScene }                                  = require('./eventScene');
+const { sceneSwitchFade }                           = require('./eventSceneSwitch');
 
-// ─── Screen Events ─────────────────────────────────────────────────────────
-const { fadeIn, fadeOut, flashScreen }         = require('./eventScreen');
+// ─── Screen Events ──────────────────────────────────────────────────────────
+const { fadeIn, fadeOut, flashScreen }              = require('./eventScreen');
 
-// ─── Timer Events ──────────────────────────────────────────────────────────
+// ─── Timer Events ───────────────────────────────────────────────────────────
 const { idleTimer, waitFrames,
-        attachTimer, detachTimer }             = require('./eventTimer');
+        attachTimer, detachTimer }                  = require('./eventTimer');
 
-// ─── Variable Events ───────────────────────────────────────────────────────
+// ─── Variable Events ────────────────────────────────────────────────────────
 const { setVariable, copyVariable,
-        resetVariable }                        = require('./eventVariable');
-const { setVariableValue }                     = require('./eventSetVariable');
+        resetVariable }                             = require('./eventVariable');
+const { setVariableValue }                          = require('./eventSetVariable');
 
-// ─── Wait Events ───────────────────────────────────────────────────────────
-const { waitNFrames }                          = require('./eventWait');
+// ─── Wait Events ────────────────────────────────────────────────────────────
+const { waitNFrames }                               = require('./eventWait');
 
-// ─── Text Events ───────────────────────────────────────────────────────────
-const { showText }                             = require('./eventTextShow');
+// ─── Text Events ────────────────────────────────────────────────────────────
+const { showText }                                  = require('./eventTextShow');
 
 // ═══════════════════════════════════════════════════════════════════════════
-// REGISTRO CENTRAL: todos os eventos disponiveis no MD Studio
+// REGISTRO CENTRAL: todos os eventos disponíveis no MD Studio
 // ═══════════════════════════════════════════════════════════════════════════
 const allEvents = [
   // Actor
@@ -131,7 +136,13 @@ const allEvents = [
   setActorPriority,
 
   // Camera
-  cameraMoveTo, cameraFollowActor, cameraReset,
+  cameraMoveToEvent,
+  cameraMoveToLockOnPlayerEvent,
+  cameraShakeEvent,
+  setCameraBoundsEvent,
+  setCameraLockOnPlayerEvent,
+  setCameraPositionEvent,
+  setCameraPropertyEvent,
 
   // Color / Palette
   setColor, fadePalette,
@@ -195,22 +206,19 @@ const allEvents = [
 
   // Text
   showText,
-].filter(Boolean); // remove entradas undefined caso algum modulo nao exporte o nome esperado
+].filter(Boolean);
 
 /**
- * Retorna o mapa de eventos indexado por ID.
- * Uso: const def = eventRegistry['EVENT_ACTOR_MOVE_TO'];
+ * Mapa de eventos indexado por ID.
+ * Uso: const def = eventRegistry['EVENT_CAMERA_MOVE_TO'];
  */
 const eventRegistry = allEvents.reduce((acc, evt) => {
-  if (evt && evt.id) {
-    acc[evt.id] = evt;
-  }
+  if (evt && evt.id) acc[evt.id] = evt;
   return acc;
 }, {});
 
 /**
- * Retorna todos os eventos agrupados por categoria (grupo).
- * Uso: const groups = getEventsByGroup();
+ * Retorna todos os eventos agrupados por categoria.
  */
 function getEventsByGroup() {
   const groups = {};
